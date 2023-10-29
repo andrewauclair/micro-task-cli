@@ -12,7 +12,7 @@ endif()
 project ("micro-task-cli")
 
 # Add source to this project's executable.
-add_executable (micro_task_cli "main.cpp")
+add_executable (micro_task_cli "main.cpp" "packets.hpp")
 
 target_link_libraries(micro_task_cli PRIVATE micro_task_lib sockpp-static)
 

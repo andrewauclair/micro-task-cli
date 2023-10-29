@@ -1,4 +1,6 @@
-﻿#include <iostream>
+﻿#include "packets.hpp"
+
+#include <iostream>
 #include <cstdlib>
 
 #include <sockpp/tcp_acceptor.h>
@@ -22,5 +24,9 @@ int main(int argc, char** argv)
 
 	auto connection = acceptor.accept();
 
+	auto socket = std::make_unique<sockpp::tcp_socket>(std::move(connection));
+	
 	std::cout << "connected\n";
+
+	mt::read_next_packet(*socket);
 }
