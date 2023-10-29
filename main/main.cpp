@@ -29,4 +29,5 @@ int main(int argc, char** argv)
 	std::cout << "connected\n";
 
 	mt::read_next_packet(*socket);
+	mt::send_version(*socket, "experiment");
 }

@@ -60,6 +60,8 @@ private:
 
 class version_request : public command_packet
 {
+public:
+	version_request() : command_packet(commands::VERSION_REQUEST) {}
 };
 
 class version_response : public command_packet
@@ -116,7 +118,25 @@ namespace mt
 		std::cout << "packet length: " << packet_length << '\n';
 		std::cout << "packet command: " << command << '\n';
 
-		return nullptr;
+		return std::make_unique<version_request>();
+	}
+
+	inline void send_version(sockpp::tcp_socket& socket, std::string_view version)
+	{
+		unsigned char values[255]{};
+		values[0] = 0;
+		values[1] = 2;
+		values[2] = 0;
+		values[3] = 2;
+		values[4] = static_cast<unsigned char>(version.size()) + 1;
+
+		for (int i = 5; i < 5 + version.size(); i++)
+		{
+			values[i] = version[i - 5];
+		}
+		values[5 + version.size()] = 0;
+
+		socket.write_n(&values, version.size() + 5);
 	}
 }
 
