@@ -9,6 +9,8 @@
 
 #include <sockpp/tcp_socket.h>
 
+#include <nlohmann/json.hpp>
+
 // packet structure
 // ----------------------------------------------
 // | length (2) | command (1) | sub-command (1) |
@@ -98,45 +100,74 @@ namespace mt
 		return t;
 	}
 
-	inline std::unique_ptr<command_packet> read_next_packet(sockpp::tcp_socket& socket)
+	inline std::optional<nlohmann::json> read_next_packet(sockpp::tcp_socket& socket)
 	{
-		std::vector<std::byte> received;
+		static std::vector<std::byte> received;
 
 		std::array<std::byte, 512> buffer;
+
+		if (received.size() > 0)
+		{
+			const std::uint16_t packet_length = ntohs(read_u16(received, 0));
+
+			if (received.size() >= packet_length)
+			{
+				std::vector<char> chars;
+
+				std::transform(received.begin() + 2, received.begin() + packet_length,
+					std::back_inserter(chars),
+					[](std::byte byte) { return static_cast<char>(byte); });
+
+				received.erase(received.begin(), received.begin() + packet_length);
+
+				auto json = std::string(chars.begin(), chars.end());
+				std::cout << json << '\n';
+				return nlohmann::json::parse(json);
+			}
+		}
 
 		while (true)
 		{
 			const auto read = socket.read(buffer.data(), buffer.size());
+			std::cout << "read: " << read << '\n';
 
+			if (read == -1) return {};
+			
 			std::copy_n(buffer.begin(), read, std::back_inserter(received));
-			break;
+			
+			const std::uint16_t packet_length = ntohs(read_u16(received, 0));
+			//packet_length = ((packet_length << 8) & 0xF0) | ((packet_length & 0xF0) >> 8);
+			std::cout << "packet length: " << packet_length << '\n';
+
+			if (received.size() >= packet_length)
+			{
+				break;
+			}
 		}
 
-		const std::uint16_t packet_length = read_u16(received, 0);
-		const std::uint16_t command = read_u16(received, 2);
+		const std::uint16_t packet_length = ntohs(read_u16(received, 0));
 
-		std::cout << "packet length: " << packet_length << '\n';
-		std::cout << "packet command: " << command << '\n';
+		std::vector<char> chars;
+		 
+		std::transform(received.begin() + 2, received.begin() + packet_length, 
+			std::back_inserter(chars),
+			[](std::byte byte) { return static_cast<char>(byte); });
 
-		return std::make_unique<version_request>();
+		received.erase(received.begin(), received.begin() + packet_length);
+
+		auto json = std::string(chars.begin(), chars.end());
+		std::cout << json << '\n';
+		return nlohmann::json::parse(json);
 	}
 
-	inline void send_version(sockpp::tcp_socket& socket, std::string_view version)
+	inline void send_packet(sockpp::tcp_socket& socket, nlohmann::json json)
 	{
-		unsigned char values[255]{};
-		values[0] = 0;
-		values[1] = 2;
-		values[2] = 0;
-		values[3] = 2;
-		values[4] = static_cast<unsigned char>(version.size()) + 1;
+		std::string str = json.dump();
 
-		for (int i = 5; i < 5 + version.size(); i++)
-		{
-			values[i] = version[i - 5];
-		}
-		values[5 + version.size()] = 0;
+		unsigned char size[2]{ 0, str.length() + 2 };
 
-		socket.write_n(&values, version.size() + 5);
+		socket.write_n(&size, 2);
+		socket.write_n(str.data(), str.length());
 	}
 }
 
