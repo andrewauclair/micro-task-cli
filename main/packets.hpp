@@ -120,8 +120,8 @@ namespace mt
 
 				received.erase(received.begin(), received.begin() + packet_length);
 
-				auto json = std::string(chars.begin(), chars.end());
-				std::cout << json << '\n';
+				const auto json = std::string(chars.begin(), chars.end());
+				
 				return nlohmann::json::parse(json);
 			}
 		}
@@ -136,9 +136,7 @@ namespace mt
 			std::copy_n(buffer.begin(), read, std::back_inserter(received));
 			
 			const std::uint16_t packet_length = ntohs(read_u16(received, 0));
-			//packet_length = ((packet_length << 8) & 0xF0) | ((packet_length & 0xF0) >> 8);
-			std::cout << "packet length: " << packet_length << '\n';
-
+			
 			if (received.size() >= packet_length)
 			{
 				break;
@@ -155,16 +153,16 @@ namespace mt
 
 		received.erase(received.begin(), received.begin() + packet_length);
 
-		auto json = std::string(chars.begin(), chars.end());
-		std::cout << json << '\n';
+		const auto json = std::string(chars.begin(), chars.end());
+		
 		return nlohmann::json::parse(json);
 	}
 
-	inline void send_packet(sockpp::tcp_socket& socket, nlohmann::json json)
+	inline void send_packet(sockpp::tcp_socket& socket, const nlohmann::json& json)
 	{
 		std::string str = json.dump();
 
-		unsigned char size[2]{ 0, str.length() + 2 };
+		const std::int16_t size = htons(static_cast<std::int16_t>(str.length() + 2));
 
 		socket.write_n(&size, 2);
 		socket.write_n(str.data(), str.length());
