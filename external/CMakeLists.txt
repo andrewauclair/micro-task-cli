@@ -1,5 +1,7 @@
 Include(FetchContent)
 
+cmake_policy(SET CMP0077 NEW)
+
 FetchContent_Declare(
         Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git

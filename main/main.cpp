@@ -65,6 +65,20 @@ int main(int argc, char** argv)
 			new_task.add_time = std::chrono::system_clock::now();// std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
 
 			tasks.emplace(new_task.id, new_task);
+
+			nlohmann::json response;
+
+			response["command"] = 2;
+			response["id"] = new_task.id;
+			response["name"] = new_task.name;
+			response["add-time"] = std::format("{:%FT%TZ}", new_task.add_time);
+
+			if (new_task.start_time.has_value())
+			{
+				response["start-time"] = std::format("{:%FT%TZ}", new_task.start_time.value());
+			}
+
+			mt::send_packet(*socket, response);
 		}
 		else if (command == 3) {
 			// start task
@@ -75,6 +89,14 @@ int main(int argc, char** argv)
 				task task = tasks.at(id);
 
 				task.start_time = std::chrono::system_clock::now();// std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
+
+				nlohmann::json response;
+
+				response["command"] = 3;
+				response["id"] = task.id;
+				response["name"] = task.name;
+
+				mt::send_packet(*socket, response);
 			}
 		}
 		else if (command == 4) {
@@ -99,6 +121,29 @@ int main(int argc, char** argv)
 
 				mt::send_packet(*socket, response);
 			}
+		}
+		else if (command == 5) {
+			// get all tasks
+			nlohmann::json response;
+			
+			response["command"] = 5;
+
+			for (auto&& task : tasks)
+			{
+				nlohmann::json task_json;
+				task_json["id"] = task.second.id;
+				task_json["name"] = task.second.name;
+				task_json["add-time"] = std::format("{:%FT%TZ}", task.second.add_time);
+
+				if (task.second.start_time.has_value())
+				{
+					response["start-time"] = std::format("{:%FT%TZ}", task.second.start_time.value());
+				}
+
+				response["tasks"].push_back(task_json);
+			}
+
+			mt::send_packet(*socket, response);
 		}
 		std::cout << json << '\n';
 	}
